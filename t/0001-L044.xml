@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<language id='44'>
+<page id="1267" title="SecAdminText" descr="SecAdminVarious" voice="no">
+	<!--LOG MESSAGES-->
+	<t id="1">$STATION$ in $SECTOR$ has lost $DELTA$% of its workforce, falling from $PREVIOUSLEVEL$% to $CURRENTLEVEL$%.</t>
+	<t id="2">Station Crew Unhappy</t>
+	<t id="3">$STATION$ in $SECTOR$ is running out of Medical Supplies!</t>
+	<t id="4">Station Crew Unhealthy</t>
+	<t id="5">$STATION$ in $SECTOR$ is running out of Food Rations!</t>
+	<t id="6">$STATION$ in $SECTOR$ is running out of Soja Husks!</t>
+	<t id="7">Station Crew Starving</t>
+	<!---->
+</page>
+</language>

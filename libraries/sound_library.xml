@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<diff>
+    <add sel="/soundlibrary/sound[@id='ui_notification_player_alert_24']" pos="after">
+        <sound id="happycrew_workforce_warning" description="Happy Crew sound for workforce warnings" repeat="1" is3d="0" preload="0">
+            <sample start="extensions\HappyCrew\sfx\ui\happycrew_workforce_warning.wav"/>
+            <volume start="1.0"/>
+        </sound>
+        <sound id="happycrew_supply_warning" description="Happy Crew sound for supply warnings" repeat="1" is3d="0" preload="0">
+            <sample start="extensions\HappyCrew\sfx\ui\happycrew_supply_warning.wav"/>
+            <volume start="1.0"/>
+        </sound>
+    </add>
+</diff>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content id="HappyCrew" name="Happy Crew" description="Checks essential storage values when working crew leave a station" author="Bob Hood" version="001" date="2022-12-26" save="0" enabled="1">
+  <text language="7" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="33" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="34" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="39" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="44" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="49" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="55" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="81" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="82" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="86" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+  <text language="88" name="Happy Crew" description="Checks the reason why a station is losing workers" author="Bob Hood" />
+</content>

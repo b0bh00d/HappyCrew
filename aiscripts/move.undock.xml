@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="iso-8859-1" ?>
+<diff>
+    <replace sel="/aiscript[@name='move.undock']/attention/actions/label[1]" pos="after">
+        <do_if value="@$thisship.assigneddock">
+            <set_value name="$station" exact="this.station" />
+            <do_if value="$station and $station.isplayerowned">
+                <!--
+                    Set this to true to clear the Happy Crew settings from the system (then save the
+                    game and remove the extension, or set it back to 'false' to start again)
+                -->
+                <set_value name="$clearHappyCrew" exact="false"/>
+
+                <!--
+                    As ships undock from any of the player's stations, check the workforce numbers,
+                    as well as the station's workforce-support supplies (food, medical, etc.)
+                -->
+
+                <set_value name="$stationId" exact="this.station.idcode"/>
+                <set_value name="$stationIds" exact="global.$HappyCrewStationIds?"/>
+                <do_if value="not @$clearHappyCrew and not $stationIds">
+                    <!-- Initialize new, persistent lists... -->
+                    <!-- https://forum.egosoft.com/viewtopic.php?f=181&t=450677 -->
+
+                    <set_value name="global.$HappyCrewStationIds" exact="[]"/>
+                    <set_value name="global.$HappyCrewWorkforceLevels" exact="[]"/>
+                    <set_value name="global.$HappyCrewNextChecks" exact="[]"/>
+                    <set_value name="global.$HappyCrewSupplyLevels" exact="[]"/>
+
+                    <!-- ...and other global settings -->
+
+                    <!-- Default workforce drop delta: 10% -->
+                    <!-- Issue an alert if the workforce drops more than this amount in any check cycle -->
+                    <set_value name="global.$HappyCrewWorkforceDelta" exact="0.1"/>
+                    <!-- Default suppy threshold: 20% -->
+                    <!-- Issue a warning if any workforce supply drops below this available amount in any check cycle -->
+                    <set_value name="global.$HappyCrewSupplyThreshold" exact="0.2"/>
+
+                </do_if>
+                <do_elseif value="@$clearHappyCrew">
+                    <remove_value name="global.$HappyCrewStationIds"/>
+                    <remove_value name="global.$HappyCrewWorkforceLevels"/>
+                    <remove_value name="global.$HappyCrewNextChecks"/>
+                    <remove_value name="global.$HappyCrewSupplyLevels"/>
+                    <remove_value name="global.$HappyCrewWorkforceDelta"/>
+                    <remove_value name="global.$HappyCrewSupplyThreshold"/>
+                </do_elseif>
+
+                <do_if value="not @$clearHappyCrew">
+                    <set_value name="$stationIds" exact="global.$HappyCrewStationIds"/>
+                    <set_value name="$nextChecks" exact="global.$HappyCrewNextChecks"/>
+                    <set_value name="$workforceLevels" exact="global.$HappyCrewWorkforceLevels"/>
+                    <set_value name="$supplyLevels" exact="global.$HappyCrewSupplyLevels"/>
+                    <set_value name="$workforceDelta" exact="if global.$HappyCrewWorkforceDelta then global.$HappyCrewWorkforceDelta else 0.1"/>
+                    <set_value name="$supplyThreshold" exact="if global.$HappyCrewSupplyThreshold then global.$HappyCrewSupplyThreshold else 0.2"/>
+
+                    <!-- Initialize this station in our tracking if not already there -->
+                    <do_if value="not $stationIds.indexof.{$stationId}">
+                        <append_to_list name="$stationIds" exact="$stationId"/>
+                        <append_to_list name="$nextChecks" exact="0"/>
+                    </do_if>
+                    <set_value name="$stationNdx" exact="$stationIds.indexof.{$stationId}"/>
+                    <set_value name="$nextCheck" exact="$nextChecks.{$stationNdx}"/>
+
+                    <do_if value="player.age gt @$nextCheck">
+                        <set_value name="$nextChecks.{$stationNdx}" exact="player.age + 5min"/>
+
+                        <!-- Make sure our workforce-level list is long enough -->
+                        <do_if value="$stationNdx gt $workforceLevels.count">
+                            <do_while value="$stationNdx gt $workforceLevels.count">
+                                <append_to_list name="$workforceLevels" exact="[]"/>
+                            </do_while>
+                        </do_if>
+
+                        <!-- It would be better to use the 'optimal' value here, but I don't see that available in the system -->
+                        <set_value name="$peoplecap" exact="$station.people.{entityrole.worker}.count + $station.people.free"/>
+                        <!-- It would be safer to use a sorted list of keys here (so indexing is always consistent); don't know if that's avaialble either -->
+                        <set_value name="$raceAmounts" exact="$station.workforce.amounts"/>
+
+                        <set_value name="$workforceDropped" exact="false"/>
+                        <set_value name="$stationHasParanidWorkers" exact="false"/>
+                        <set_value name="$raceNdx" exact="1" />
+                        <do_for_each name="$race" valuename="$amount" in="$raceAmounts">
+                            <do_if value="$station.workforce.{$race}.capacity gt 0">
+                                <!-- Need to know if Soja husk consumers are working on the station -->
+                                <do_if value="@$race == race.paranid">
+                                    <set_value name="$stationHasParanidWorkers" exact="true"/>
+                                </do_if>
+                                <!-- Make sure our race-specific level lists are initialized -->
+                                <do_if value="$raceNdx gt $workforceLevels.{$stationNdx}.count">
+                                    <do_while value="$raceNdx gt $workforceLevels.{$stationNdx}.count">
+                                        <!-- Levels are stored as a floating point percentage -->
+                                        <append_to_list name="$workforceLevels.{$stationNdx}" exact="0f"/>
+                                    </do_while>
+                                </do_if>
+
+                                <!-- <debug_to_file name="'move.undock.log'" directory="'HappyCrew'" text="'Station: ' + $station.knownname + ', Race: ' + $race + ', Last level: ' + $workforceLevels.{$stationNdx}.{$raceNdx}" output="false" append="true" /> -->
+                                <!-- Calculate workforce levels for this race -->
+                                <set_value name="$workforcePercent" exact="($station.workforce.{$race}.amount)f / $station.workforce.{$race}.capacity" />
+                                <set_value name="$workforcePercentDisplay" exact="$workforcePercent * 100.0" />
+                                <set_value name="$lastLevel" exact="$workforceLevels.{$stationNdx}.{$raceNdx}" />
+                                <set_value name="$lastLevelDisplay" exact="$lastLevel * 100.0" />
+
+                                <do_if value="$workforcePercent lt $lastLevel">
+                                    <!-- This station has lost workers since the last check. How much was the drop? -->
+                                    <set_value name="$delta" exact="($lastLevel - $workforcePercent)f / $lastLevel"/>
+                                    <set_value name="$deltaDisplay" exact="$delta * 100.0" />
+
+                                    <!-- Warn if the drop is more than 10% in a single cycle -->
+                                    <!-- (ideally, this would be configurable by the player, but I don't know how to do that) -->
+                                    <do_if value="$delta gt $workforceDelta">
+                                        <substitute_text text="$logtext" source="{1267,1}" comment="$STATION$ in $SECTOR$ has lost $DELTA$% of its workforce, falling from $PREVIOUSLEVEL$% to $CURRENTLEVEL$%.">
+                                            <replace string="'$STATION$'" with="$station.knownname" />
+                                            <replace string="'$SECTOR$'" with="this.sector.knownname" />
+                                            <replace string="'$DELTA$'" with="$deltaDisplay" />
+                                            <replace string="'$PREVIOUSLEVEL$'" with="$lastLevelDisplay" />
+                                            <replace string="'$CURRENTLEVEL$'" with="$workforcePercentDisplay" />
+                                        </substitute_text>
+                                        <write_to_logbook category="upkeep" object="this.container" title="{1267,2}" text="$logtext" interaction="showonmap"/>
+                                        <!-- Make sure we get the player's attention; this is a critical situation for the station's efficiency -->
+                                        <show_notification text="[[{1267,2}, 200, 0, 0], '', $logtext]" sound="happycrew_workforce_warning"/>
+
+                                        <set_value name="$workforceDropped" exact="true"/>
+                                    </do_if>
+
+                                    <remove_value name="$delta"/>
+                                    <remove_value name="$deltaDisplay"/>
+                                </do_if> <!-- "$workforcePercent lt $lastLevel" -->
+
+                                <set_value name="$workforceLevels.{$stationNdx}.{$raceNdx}" exact="$workforcePercent" />
+                                <set_value name="$raceNdx" exact="$raceNdx + 1" />
+
+                                <remove_value name="$workforcePercent"/>
+                                <remove_value name="$workforcePercentDisplay"/>
+                                <remove_value name="$lastLevel"/>
+                                <remove_value name="$lastLevelDisplay"/>
+
+                                <do_if value="@$workforceDropped">
+                                    <!--
+                                        Only notify on the first race to drop; no need to waste processing
+                                        time notify for any others
+                                    -->
+                                    <break/>
+                                </do_if>
+                            </do_if> <!-- "$station.workforce.{$race}.capacity gt 0" -->
+                        </do_for_each>
+
+                        <!--
+                            If the workforce did not experience a precipitous drop in numbers,
+                            check the station's supplies in order to avoid any in the near future.
+                            If it did, no real point in warning about supplies; that's likely the
+                            reason for the drop in the first place.
+                        -->
+
+                        <do_if value="not $workforceDropped">
+                            <set_value name="$wares" exact="$station.cargo.list" />
+                            <do_if value="$wares.count gt 0">
+                                <!-- Make sure our supply level list is long enough -->
+                                <do_if value="$stationNdx gt $supplyLevels.count">
+                                    <do_while value="$stationNdx gt $supplyLevels.count">
+                                        <append_to_list name="$supplyLevels" exact="[]"/>
+                                    </do_while>
+                                    <!-- Make sure our supply level list for this station is initialized -->
+                                    <do_all exact="3" counter="$i">
+                                        <!-- We set the initial value impossibly high to force a check the first time through -->
+                                        <append_to_list name="$supplyLevels.{$stationNdx}" exact="1000000000"/>
+                                    </do_all>
+                                </do_if>
+
+                                <!-- Rationale:
+                                    Like the workforce, we are only interested in a supply if it drops from a previous
+                                    level; this implies consumption or sale.  However, since factory workforce will consume
+                                    the station's salable wares anyway, the levels remain important in either case.
+                                -->
+
+                                <do_all exact="$wares.count" counter="$wareNdx">
+                                    <set_value name="$ware" exact="$wares.{$wareNdx}" />
+                                    <set_value name="$msg_title" exact="null"/>
+                                    <set_value name="$msg_text" exact="null"/>
+
+                                    <do_if value="@$ware == ware.foodrations">
+                                        <set_value name="$currentAmount" exact="this.station.cargo.{$ware}.count" />
+                                        <do_if value="@$currentAmount lt @$supplyLevels.{$stationNdx}.{1}">
+                                            <set_value name="$maxAmount" exact="this.station.cargo.{$ware}.target" />
+                                            <set_value name="$diff" exact="($currentAmount)f / $maxAmount" />
+                                            <do_if value="$diff le $supplyThreshold">
+                                                <debug_to_file name="'move.undock.log'" directory="'HappyCrew'" text="'Ware: ' + $ware + ', CurrentAmount: ' + $currentAmount + ', MaxAmount: ' + $maxAmount + ', Drop: ' + $diff" output="false" append="true" />
+                                                <set_value name="$msg_title" exact="{1267,7}"/>
+                                                <set_value name="$msg_text" exact="{1267,5}"/>
+                                            </do_if>
+                                            <remove_value name="$maxAmount"/>
+                                            <remove_value name="$diff"/>
+                                        </do_if>
+                                        <set_value name="$supplyLevels.{$stationNdx}.{1}" exact="$currentAmount"/>
+                                        <remove_value name="$currentAmount"/>
+                                    </do_if>
+                                    <do_elseif value="@$ware == ware.medicalsupplies">
+                                        <set_value name="$currentAmount" exact="this.station.cargo.{$ware}.count" />
+                                        <do_if value="@$currentAmount lt @$supplyLevels.{$stationNdx}.{2}">
+                                            <set_value name="$maxAmount" exact="this.station.cargo.{$ware}.target" />
+                                            <set_value name="$diff" exact="($currentAmount)f / $maxAmount" />
+                                            <do_if value="$diff le $supplyThreshold">
+                                                <debug_to_file name="'move.undock.log'" directory="'HappyCrew'" text="'Ware: ' + $ware + ', CurrentAmount: ' + $currentAmount + ', MaxAmount: ' + $maxAmount + ', Drop: ' + $diff" output="false" append="true" />
+                                                <set_value name="$msg_title" exact="{1267,4}"/>
+                                                <set_value name="$msg_text" exact="{1267,3}"/>
+                                            </do_if>
+                                            <remove_value name="$maxAmount"/>
+                                            <remove_value name="$diff"/>
+                                        </do_if>
+                                        <set_value name="$supplyLevels.{$stationNdx}.{2}" exact="$currentAmount"/>
+                                        <remove_value name="$currentAmount"/>
+                                    </do_elseif>
+                                    <!-- Need to check Soja Husks if we have Paranid workers at this station -->
+                                    <do_elseif value="@$stationHasParanidWorkers and (@$ware == ware.sojahusk)">
+                                        <set_value name="$currentAmount" exact="this.station.cargo.{$ware}.count" />
+                                        <do_if value="@$currentAmount lt @$supplyLevels.{$stationNdx}.{3}">
+                                            <set_value name="$maxAmount" exact="this.station.cargo.{$ware}.target" />
+                                            <set_value name="$diff" exact="($currentAmount)f / $maxAmount" />
+                                            <do_if value="$diff le $supplyThreshold">
+                                                <debug_to_file name="'move.undock.log'" directory="'HappyCrew'" text="'Ware: ' + $ware + ', CurrentAmount: ' + $currentAmount + ', MaxAmount: ' + $maxAmount + ', Drop: ' + $diff" output="false" append="true" />
+                                                <set_value name="$msg_title" exact="{1267,7}"/>
+                                                <set_value name="$msg_text" exact="{1267,6}"/>
+                                            </do_if>
+                                            <remove_value name="$maxAmount"/>
+                                            <remove_value name="$diff"/>
+                                        </do_if>
+                                        <set_value name="$supplyLevels.{$stationNdx}.{3}" exact="$currentAmount"/>
+                                        <remove_value name="$currentAmount"/>
+                                    </do_elseif>
+
+                                    <do_if value="$msg_title">
+                                        <substitute_text text="$logtext" source="$msg_text">
+                                            <replace string="'$STATION$'" with="$station.knownname" />
+                                            <replace string="'$SECTOR$'" with="this.sector.knownname" />
+                                        </substitute_text>
+                                        <write_to_logbook category="upkeep" object="this.container" title="$msg_title" text="$logtext" interaction="showonmap"/>
+                                        <!-- Not as critical as bleeding station personnel, but this condition is a precusor to it -->
+                                        <show_notification text="[[$msg_title, 200, 0, 0], '', $logtext]" sound="happycrew_supply_warning"/>
+                                    </do_if>
+
+                                    <remove_value name="$ware" />
+                                    <remove_value name="$msg_title" />
+                                    <remove_value name="$msg_text" />
+                                </do_all> <!-- "$wares.count" -->
+                            </do_if> <!-- "$wares.count gt 0" -->
+
+                            <remove_value name="$wares" />
+                        </do_if> <!-- "not $workforceDropped" -->
+
+                        <!-- <debug_to_file name="'move.undock.log'" directory="'HappyCrew'" text="'raceLastValues: ' + $raceLastValues" output="false" append="true" /> -->
+
+                        <!-- Remember historic values for the next run -->
+                        <set_value name="global.$HappyCrewStationIds" exact="$stationIds" />
+                        <set_value name="global.$HappyCrewWorkforceLevels" exact="$workforceLevels" />
+                        <set_value name="global.$HappyCrewNextChecks" exact="$nextChecks" />
+                        <set_value name="global.$HappyCrewSupplyLevels" exact="$supplyLevels" />
+
+                        <remove_value name="$raceNdx"/>
+                        <remove_value name="$peoplecap"/>
+                        <remove_value name="$raceAmounts"/>
+                        <remove_value name="$stationHasParanidWorkers"/>
+                        <remove_value name="$workforceDropped"/>
+                    </do_if> <!-- "player.age gt @$nextCheck" -->
+
+                    <remove_value name="$stationNdx"/>
+                    <remove_value name="$workforceLevels"/>
+                    <remove_value name="$workforceLevels"/>
+                    <remove_value name="$stationNdx"/>
+                    <remove_value name="$nextChecks"/>
+                    <remove_value name="$nextCheck"/>
+                    <remove_value name="$supplyLevels"/>
+                    <remove_value name="$workforceDelta"/>
+                    <remove_value name="$supplyThreshold"/>
+                </do_if> <!-- "not @$clearHappyCrew" -->
+
+                <remove_value name="$stationId"/>
+                <remove_value name="$stationIds"/>
+                <remove_value name="$clearHappyCrew"/>
+            </do_if> <!-- "$station and $station.isplayerowned" -->
+
+            <remove_value name="$station"/>
+        </do_if> <!-- "@$thisship.assigneddock" -->
+
+        <label name="start" />
+    </replace>
+</diff>
