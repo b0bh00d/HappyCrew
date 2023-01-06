@@ -50,8 +50,8 @@
                     <set_value name="$nextChecks" exact="global.$HappyCrewNextChecks"/>
                     <set_value name="$workforceLevels" exact="global.$HappyCrewWorkforceLevels"/>
                     <set_value name="$supplyLevels" exact="global.$HappyCrewSupplyLevels"/>
-                    <set_value name="$workforceDelta" exact="if global.$HappyCrewWorkforceDelta then global.$HappyCrewWorkforceDelta else 0.1"/>
-                    <set_value name="$supplyThreshold" exact="if global.$HappyCrewSupplyThreshold then global.$HappyCrewSupplyThreshold else 0.2"/>
+                    <set_value name="$workforceDelta" exact="if global.$HappyCrewWorkforceDelta? then global.$HappyCrewWorkforceDelta else 0.1"/>
+                    <set_value name="$supplyThreshold" exact="if global.$HappyCrewSupplyThreshold? then global.$HappyCrewSupplyThreshold else 0.2"/>
 
                     <!-- Initialize this station in our tracking if not already there -->
                     <do_if value="not $stationIds.indexof.{$stationId}">
